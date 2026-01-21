@@ -13,6 +13,7 @@ EPOCHS = 25
 LEARNING_RATE = 0.01
 NEGATIVE_SAMPLES = 5  # Number of negative samples per positive
 
+
 # Custom Dataset for Skip-gram
 class SkipGramDataset(Dataset):
     def __init__(self, pkl_path):
@@ -34,7 +35,6 @@ class SkipGramDataset(Dataset):
     def __getitem__(self, index):
         return(self.center_v[index], self.context_v[index])
 
-
     
 # Simple Skip-gram Module
 class Word2Vec(nn.Module):
@@ -47,8 +47,8 @@ class Word2Vec(nn.Module):
         center_emb_unsqueezed = torch.unsqueeze(center_emb) # shape: (batch, 1, dim)
         if context_emb.dim() == 2:
             context_emb = context_emb.unsqueeze(1) # shape: (batch, 1, dim)
-        else:
-            context_emb_tp = context_emb.transpose(1, 2) # shape: (batch, neg_samples, dim)
+
+        context_emb_tp = context_emb.transpose(1, 2) # shape: (batch, neg_samples, dim)
         
         return torch.bmm(center_emb_unsqueezed, context_emb_tp).squeeze(1)
 
@@ -64,27 +64,42 @@ class Word2Vec(nn.Module):
 
 
 # Dataset and DataLoader
-dataset = SkipGramDataset(Dataset)
+dataset = SkipGramDataset('processed_data.pkl')
+dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
 # Precompute negative sampling distribution below
 counts = torch.zeros(dataset.vocab_size)
-for word, count in dataset.word_freq:
+for word, count in dataset.word_freq.items():
     counts[dataset.word2idx[word]] = count
 
 neg_sampling_freq = counts ** 0.75
 neg_sampling_dist = neg_sampling_freq / torch.sum(neg_sampling_freq)
 
 
-# Device selection: CUDA > MPS > CPU
+# Device selection: MPS > CPU (using mac)
+device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
+print(f'Using device: {device}')
 
 
 # Model, Loss, Optimizer
+model = Word2Vec(dataset.vocab_size)
+criterion = nn.BCEWithLogitsLoss()
+optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-
-def make_targets(center, context, vocab_size):
-    pass
+def make_targets(pos_dot, neg_dot, device):
+    pos_targets = torch.ones(pos_dot.shape).to(device) # score 1, shape (batch, 1) 
+    neg_targets = torch.zeros(neg_dot.shape).to(device) # score 0, shape (batch, neg_samples)
+    return pos_targets, neg_targets
 
 # Training loop
+neg_sampling_dist = neg_sampling_dist.to(device)
+model.to(device)
+
+for epoch in range(EPOCHS):
+    for center, context in tqdm(dataloader):
+        center, context = center.to(device), context.to(device)
+        
+        neg_indices = 
 
 
 # Save embeddings and mappings
