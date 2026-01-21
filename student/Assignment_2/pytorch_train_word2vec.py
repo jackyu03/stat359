@@ -15,25 +15,67 @@ NEGATIVE_SAMPLES = 5  # Number of negative samples per positive
 
 # Custom Dataset for Skip-gram
 class SkipGramDataset(Dataset):
-    pass
+    def __init__(self, pkl_path):
+        with open(pkl_path, "rb") as f:
+            self.data = pickle.load(f)
+        
+        self.word2idx = self.data['word2idx']
+        self.vocab_size = len(self.word2idx)
+        self.word_freq = self.data['counter']
+        self.skipgram_df = self.data['skipgram_df']
+
+        self.center_v = torch.tensor(self.skipgram_df['center'].values, dtype=torch.long)
+        self.context_v = torch.tensor(self.skipgram_df['context'].values, dtype=torch.long)
+
+    def __len__(self):
+        return len(self.center_v)
+
+    
+    def __getitem__(self, index):
+        return(self.center_v[index], self.context_v[index])
 
 
+    
 # Simple Skip-gram Module
 class Word2Vec(nn.Module):
-    pass
+    def __init__(self, vocab_size, embedding_dim=EMBEDDING_DIM):
+        super().__init__()
+        self.center_embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.context_embedding = nn.Embedding(vocab_size, embedding_dim)
 
+    def emb_dot_product(self, center_emb, context_emb):
+        center_emb_unsqueezed = torch.unsqueeze(center_emb) # shape: (batch, 1, dim)
+        if context_emb.dim() == 2:
+            context_emb = context_emb.unsqueeze(1) # shape: (batch, 1, dim)
+        else:
+            context_emb_tp = context_emb.transpose(1, 2) # shape: (batch, neg_samples, dim)
+        
+        return torch.bmm(center_emb_unsqueezed, context_emb_tp).squeeze(1)
 
-# Load processed data
+    def forward(self, center, pos_context, neg_contexts):
+        center_emb = self.center_embedding(center)
+        pos_context_emb = self.context_embedding(pos_context)
+        neg_context_embs = self.context_embedding(neg_contexts)
 
+        pos_dot = self.emb_dot_product(center_emb, pos_context_emb)
+        neg_dot = self.emb_dot_product(center_emb, neg_context_embs)
 
-# Precompute negative sampling distribution below
-
-
-# Device selection: CUDA > MPS > CPU
-
+        return pos_dot, neg_dot
 
 
 # Dataset and DataLoader
+dataset = SkipGramDataset(Dataset)
+
+# Precompute negative sampling distribution below
+counts = torch.zeros(dataset.vocab_size)
+for word, count in dataset.word_freq:
+    counts[dataset.word2idx[word]] = count
+
+neg_sampling_freq = counts ** 0.75
+neg_sampling_dist = neg_sampling_freq / torch.sum(neg_sampling_freq)
+
+
+# Device selection: CUDA > MPS > CPU
 
 
 # Model, Loss, Optimizer
