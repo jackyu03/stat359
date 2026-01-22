@@ -64,7 +64,7 @@ class Word2Vec(nn.Module):
 
 
 # Dataset and DataLoader
-dataset = SkipGramDataset('processed_data.pkl')
+dataset = SkipGramDataset('/Users/JackYu_1/Desktop/STAT_359/stat359/student/Assignment_2/processed_data.pkl')
 dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
 # Precompute negative sampling distribution below
@@ -92,20 +92,22 @@ def make_targets(pos_dot, neg_dot, device):
     return pos_targets, neg_targets
 
 # Training loop
-neg_sampling_dist = neg_sampling_dist.to(device)
 model.to(device)
+# using a M-series GPU for multinomial sampling will lead to crazy RAM usage. CPU is more efficient
+neg_sampling_dist = neg_sampling_dist.to('cpu')
 
 for epoch in range(EPOCHS):
     epoch_loss = 0.0
     for center, context in tqdm(dataloader):
         center, context = center.to(device), context.to(device)
+        actual_batch_size = center.size(0)
         
         # sampling negative cases
         neg_indices = torch.multinomial(
             neg_sampling_dist,
-            BATCH_SIZE * NEGATIVE_SAMPLES,
+            actual_batch_size * NEGATIVE_SAMPLES,
             replacement=True
-        ).view(BATCH_SIZE, NEGATIVE_SAMPLES).to(device)
+        ).view(actual_batch_size, NEGATIVE_SAMPLES).to(device)
 
         # collision handling
         for i in range(5): # try maximum 5 times of collision handling
