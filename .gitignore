@@ -23,6 +23,7 @@ sandbox*
 *.xlsx
 sql_sandbox/*
 .ruff_cache/
+*.model
 
 **/tuned_embedder/
 **/*.zip

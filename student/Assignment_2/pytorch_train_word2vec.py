@@ -43,6 +43,10 @@ class Word2Vec(nn.Module):
         self.center_embedding = nn.Embedding(vocab_size, embedding_dim)
         self.context_embedding = nn.Embedding(vocab_size, embedding_dim)
 
+        # initialize embedding weights to improve gradient flow
+        nn.init.xavier_uniform_(self.center_embedding.weight)
+        nn.init.xavier_uniform_(self.context_embedding.weight)
+
     def emb_dot_product(self, center_emb, context_emb):
         center_emb_unsqueezed = center_emb.unsqueeze(1) # shape: (batch, 1, dim)
         if context_emb.dim() == 2:
@@ -83,7 +87,7 @@ print(f'Using device: {device}')
 
 # Model, Loss, Optimizer
 model = Word2Vec(dataset.vocab_size)
-criterion = nn.BCEWithLogitsLoss()
+criterion = nn.BCEWithLogitsLoss(reduction='none')
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
 def make_targets(pos_dot, neg_dot, device):
@@ -127,7 +131,9 @@ for epoch in range(EPOCHS):
 
         # compute loss
         pos_targets, neg_targets = make_targets(pos_dot, neg_dot, device)
-        loss = criterion(pos_dot, pos_targets) + criterion(neg_dot, neg_targets)
+        pos_loss = criterion(pos_dot, pos_targets) # (batch, 1)
+        neg_loss = criterion(neg_dot, neg_targets) # (batch, negative_samples)
+        loss = (pos_loss.sum() + neg_loss.sum()) / actual_batch_size
 
         # back propagation
         optimizer.zero_grad()
