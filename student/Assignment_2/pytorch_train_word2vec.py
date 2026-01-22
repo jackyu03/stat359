@@ -140,7 +140,7 @@ for epoch in range(EPOCHS):
 
 
 # Save embeddings and mappings
-embeddings = model.center_embedding.weight.detach()
-with open('word2vec_embeddings.pkl', 'wb') as f:
+embeddings = model.center_embedding.weight.detach().cpu().numpy()
+with open('/Users/JackYu_1/Desktop/STAT_359/stat359/student/Assignment_2/word2vec_embeddings.pkl', 'wb') as f:
     pickle.dump({'embeddings': embeddings, 'word2idx': dataset.data['word2idx'], 'idx2word': dataset.data['idx2word']}, f)
 print("Embeddings saved to word2vec_embeddings.pkl")
