@@ -44,7 +44,7 @@ class Word2Vec(nn.Module):
         self.context_embedding = nn.Embedding(vocab_size, embedding_dim)
 
     def emb_dot_product(self, center_emb, context_emb):
-        center_emb_unsqueezed = torch.unsqueeze(center_emb) # shape: (batch, 1, dim)
+        center_emb_unsqueezed = center_emb.unsqueeze(1) # shape: (batch, 1, dim)
         if context_emb.dim() == 2:
             context_emb = context_emb.unsqueeze(1) # shape: (batch, 1, dim)
 
@@ -96,14 +96,49 @@ neg_sampling_dist = neg_sampling_dist.to(device)
 model.to(device)
 
 for epoch in range(EPOCHS):
+    epoch_loss = 0.0
     for center, context in tqdm(dataloader):
         center, context = center.to(device), context.to(device)
         
-        neg_indices = 
+        # sampling negative cases
+        neg_indices = torch.multinomial(
+            neg_sampling_dist,
+            BATCH_SIZE * NEGATIVE_SAMPLES,
+            replacement=True
+        ).view(BATCH_SIZE, NEGATIVE_SAMPLES).to(device)
+
+        # collision handling
+        for i in range(5): # try maximum 5 times of collision handling
+            # generate mask to detect collisions with both center or context
+            collision = (neg_indices == context.unsqueeze(1)) | (neg_indices == center.unsqueeze(1))
+
+            if not collision.any():
+                break
+
+            neg_indices[collision] = torch.randint(
+                0, dataset.vocab_size,
+                (collision.sum(),)
+            ).to(device)
+
+        # forward
+        pos_dot, neg_dot = model.forward(center, context, neg_indices)
+
+        # compute loss
+        pos_targets, neg_targets = make_targets(pos_dot, neg_dot, device)
+        loss = criterion(pos_dot, pos_targets) + criterion(neg_dot, neg_targets)
+
+        # back propagation
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        epoch_loss += loss.item()
+    
+    print(f"Completed epoch {epoch} with avg loss {epoch_loss/len(dataloader):.4f}!")
 
 
 # Save embeddings and mappings
-# embeddings = model.get_embeddings()
+embeddings = model.center_embedding.weight.detach()
 with open('word2vec_embeddings.pkl', 'wb') as f:
-    pickle.dump({'embeddings': embeddings, 'word2idx': data['word2idx'], 'idx2word': data['idx2word']}, f)
+    pickle.dump({'embeddings': embeddings, 'word2idx': dataset.data['word2idx'], 'idx2word': dataset.data['idx2word']}, f)
 print("Embeddings saved to word2vec_embeddings.pkl")
