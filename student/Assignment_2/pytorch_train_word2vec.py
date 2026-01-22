@@ -87,6 +87,7 @@ print(f'Using device: {device}')
 
 # Model, Loss, Optimizer
 model = Word2Vec(dataset.vocab_size)
+model.to(device)
 criterion = nn.BCEWithLogitsLoss(reduction='none')
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
@@ -96,7 +97,6 @@ def make_targets(pos_dot, neg_dot, device):
     return pos_targets, neg_targets
 
 # Training loop
-model.to(device)
 # using a M-series GPU for multinomial sampling will lead to crazy RAM usage. CPU is more efficient
 neg_sampling_dist = neg_sampling_dist.to('cpu')
 
