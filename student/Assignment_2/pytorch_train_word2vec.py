@@ -10,7 +10,7 @@ from tqdm import tqdm
 EMBEDDING_DIM = 100
 BATCH_SIZE = 128
 EPOCHS = 25
-LEARNING_RATE = 0.01
+LEARNING_RATE = 2.5
 NEGATIVE_SAMPLES = 5  # Number of negative samples per positive
 
 
@@ -89,7 +89,13 @@ print(f'Using device: {device}')
 model = Word2Vec(dataset.vocab_size)
 model.to(device)
 criterion = nn.BCEWithLogitsLoss(reduction='none')
-optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE)
+scheduler = torch.optim.lr_scheduler.LinearLR(
+    optimizer, 
+    start_factor=1.0, 
+    end_factor=0.001, 
+    total_iters=EPOCHS
+)
 
 def make_targets(pos_dot, neg_dot, device):
     pos_targets = torch.ones(pos_dot.shape).to(device) # score 1, shape (batch, 1) 
@@ -113,7 +119,7 @@ for epoch in range(EPOCHS):
             replacement=True
         ).view(actual_batch_size, NEGATIVE_SAMPLES).to(device)
 
-        # collision handling
+        '''# collision handling
         for i in range(5): # try maximum 5 times of collision handling
             # generate mask to detect collisions with both center or context
             collision = (neg_indices == context.unsqueeze(1)) | (neg_indices == center.unsqueeze(1))
@@ -124,7 +130,7 @@ for epoch in range(EPOCHS):
             neg_indices[collision] = torch.randint(
                 0, dataset.vocab_size,
                 (collision.sum(),)
-            ).to(device)
+            ).to(device)'''
 
         # forward
         pos_dot, neg_dot = model.forward(center, context, neg_indices)
@@ -143,6 +149,7 @@ for epoch in range(EPOCHS):
         epoch_loss += loss.item()
     
     print(f"Completed epoch {epoch} with avg loss {epoch_loss/len(dataloader):.4f}!")
+    scheduler.step()
 
 
 # Save embeddings and mappings
