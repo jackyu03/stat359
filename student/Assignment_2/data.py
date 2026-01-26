@@ -71,7 +71,7 @@ def main():
                     pairs.append((center, indices[j]))
         return pairs
 
-    # Generate skip-gram pairs for first 100 sentences
+    # Generate skip-gram pairs for all sentences
     window_size = 2
     skipgram_data = []
     for sentence in itertools.islice(sent_list, 1701):
