@@ -250,10 +250,47 @@ with torch.no_grad():
 class_names = ['Negative (0)', 'Neutral (1)', 'Positive (2)']
 print(classification_report(all_labels, all_preds, target_names=class_names, digits=4))
 
-# Confusion Matrix
-cm = confusion_matrix(all_labels, all_preds)
-plt.figure(figsize=(8, 6))
-sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
-plt.title('Confusion Matrix')
-plt.savefig('outputs/mlp_confusion_matrix.png')
-# plt.show()
+# ========== Update Shared Metrics CSV ==========
+print("\n========== Updating Shared Metrics CSV ==========")
+metrics_path = 'outputs/shared_metrics.csv'
+model_name = 'MLP'
+
+# Calculate per-class metrics
+f1_negative = f1_score(all_labels, all_preds, labels=[0], average='macro')
+f1_neutral = f1_score(all_labels, all_preds, labels=[1], average='macro')
+f1_positive = f1_score(all_labels, all_preds, labels=[2], average='macro')
+
+print("\nPer-class F1 Scores:")
+print(f"Negative (0): {f1_negative:.4f}")
+print(f"Neutral (1): {f1_neutral:.4f}")
+print(f"Positive (2): {f1_positive:.4f}")
+
+new_row = {
+    'Model': model_name,
+    'Accuracy': test_acc,
+    'Macro F1': test_f1_macro,
+    'Weighted F1': test_f1_weighted,
+    'Negative F1': f1_negative,
+    'Neutral F1': f1_neutral,
+    'Positive F1': f1_positive
+}
+
+if os.path.exists(metrics_path):
+    df_metrics = pd.read_csv(metrics_path)
+    if 'Model' in df_metrics.columns:
+        if model_name in df_metrics['Model'].values:
+            print(f"Updating existing row for {model_name}...")
+            # Update the row
+            for key, value in new_row.items():
+                df_metrics.loc[df_metrics['Model'] == model_name, key] = value
+        else:
+            print(f"Appending new row for {model_name}...")
+            df_metrics = pd.concat([df_metrics, pd.DataFrame([new_row])], ignore_index=True)
+    else:
+         df_metrics = pd.concat([df_metrics, pd.DataFrame([new_row])], ignore_index=True)
+else:
+    print(f"Creating new metrics file at {metrics_path}...")
+    df_metrics = pd.DataFrame([new_row])
+
+df_metrics.to_csv(metrics_path, index=False)
+print(f"Metrics saved to {metrics_path}")

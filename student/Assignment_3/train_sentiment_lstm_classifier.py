@@ -134,19 +134,21 @@ print("\n========== Defining lstm Model ==========")
 class LSTMClassifier(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_layers, num_classes, dropout=0.5):
         super().__init__()
-        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=num_layers,
-                            batch_first=True, dropout=dropout)
+        self.bn = nn.BatchNorm1d(32)
+        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=num_layers, dropout=dropout,
+                            batch_first=True, bidirectional=True)
         self.fc = nn.Sequential(
-            nn.Linear(hidden_dim, 64),
+            nn.Linear(hidden_dim * 2, 64),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(64, num_classes)
         )
     def forward(self, x):
         # x: (batch, seq_len, input_dim)
+        x = self.bn(x)
         _, (h_n, _) = self.lstm(x)  # h_n: (num_layers, batch, hidden_dim)
-        out = h_n[-1]  # (batch, hidden_dim)
-        return self.fc(out)
+        hidden_out = torch.cat((h_n[-2], h_n[-1]), dim=1)
+        return self.fc(hidden_out)
 
 input_dim = X_train.shape[2]
 num_classes = len(np.unique(y))
@@ -161,7 +163,7 @@ device = get_device()
 print(f"Using device: {device}")
 os.makedirs("outputs", exist_ok=True)
 model = model.to(device)
-optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
+optimizer = optim.Adam(model.parameters(), lr=0.00008, weight_decay=1e-3)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3)
 counts = [684, 2879, 1363]  # Class counts
 class_weights = 1. / torch.tensor(counts, dtype=torch.float)
@@ -204,7 +206,7 @@ for epoch in range(num_epochs):
     train_loss_history.append(epoch_train_loss)
     train_f1_history.append(train_f1)
     train_acc_history.append(train_acc)
-    print(f"Train Loss: {epoch_train_loss:.4f}, Train F1: {train_f1:.4f}, Train Acc: {train_acc:.4f}")
+#    print(f"Train Loss: {epoch_train_loss:.4f}, Train F1: {train_f1:.4f}, Train Acc: {train_acc:.4f}")
     # Validation
     model.eval()
     val_loss = 0.0
@@ -225,7 +227,7 @@ for epoch in range(num_epochs):
     val_loss_history.append(epoch_val_loss)
     val_f1_history.append(val_f1)
     val_acc_history.append(val_acc)
-    print(f"Val Loss: {epoch_val_loss:.4f}, Val F1: {val_f1:.4f}, Val Acc: {val_acc:.4f}")
+#    print(f"Val Loss: {epoch_val_loss:.4f}, Val F1: {val_f1:.4f}, Val Acc: {val_acc:.4f}")
     scheduler.step(val_f1)
     print(f'Epoch {epoch+1}/{num_epochs}: Train Loss: {epoch_train_loss:.4f} | Train F1: {train_f1:.4f} | Train Acc: {train_acc:.4f} | Val Loss: {epoch_val_loss:.4f} | Val F1: {val_f1:.4f} | Val Acc: {val_acc:.4f}')
     if val_f1 > best_val_f1:
@@ -313,10 +315,50 @@ plt.title('Confusion Matrix')
 plt.savefig('outputs/lstm_confusion_matrix.png')
 # plt.show()
 print("Confusion matrix saved as 'outputs/lstm_confusion_matrix.png'.")
+# ========== Update Shared Metrics CSV ==========
+print("\n========== Updating Shared Metrics CSV ==========")
+metrics_path = 'outputs/shared_metrics.csv'
+model_name = 'LSTM'
+
+# Calculate per-class metrics
+f1_negative = f1_score(all_labels, all_preds, labels=[0], average='macro')
+f1_neutral = f1_score(all_labels, all_preds, labels=[1], average='macro')
+f1_positive = f1_score(all_labels, all_preds, labels=[2], average='macro')
+
+new_row = {
+    'Model': model_name,
+    'Accuracy': test_acc,
+    'Macro F1': test_f1_macro,
+    'Weighted F1': test_f1_weighted,
+    'Negative F1': f1_negative,
+    'Neutral F1': f1_neutral,
+    'Positive F1': f1_positive
+}
+
+if os.path.exists(metrics_path):
+    df_metrics = pd.read_csv(metrics_path)
+    if 'Model' in df_metrics.columns:
+        if model_name in df_metrics['Model'].values:
+            print(f"Updating existing row for {model_name}...")
+            # Update the row
+            for key, value in new_row.items():
+                df_metrics.loc[df_metrics['Model'] == model_name, key] = value
+        else:
+            print(f"Appending new row for {model_name}...")
+            df_metrics = pd.concat([df_metrics, pd.DataFrame([new_row])], ignore_index=True)
+    else:
+         df_metrics = pd.concat([df_metrics, pd.DataFrame([new_row])], ignore_index=True)
+else:
+    print(f"Creating new metrics file at {metrics_path}...")
+    df_metrics = pd.DataFrame([new_row])
+
+df_metrics.to_csv(metrics_path, index=False)
+print(f"Metrics saved to {metrics_path}")
+
 print("\nPer-class F1 Scores:")
-for i, name in enumerate(class_names):
-    class_f1 = f1_score(all_labels, all_preds, labels=[i], average='macro')
-    print(f"{name}: {class_f1:.4f}")
+print(f"Negative (0): {f1_negative:.4f}")
+print(f"Neutral (1): {f1_neutral:.4f}")
+print(f"Positive (2): {f1_positive:.4f}")
 
 print("\n========== Script Complete ==========")
 # End of script
