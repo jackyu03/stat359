@@ -134,7 +134,8 @@ print("\n========== Defining lstm Model ==========")
 class LSTMClassifier(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_layers, num_classes, dropout=0.5):
         super().__init__()
-        self.bn = nn.BatchNorm1d(32)
+        self.dropout = nn.Dropout(dropout)
+        self.ln = nn.LayerNorm(input_dim)  # Normalize input features (last dim)
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=num_layers, dropout=dropout,
                             batch_first=True, bidirectional=True)
         self.fc = nn.Sequential(
@@ -145,14 +146,15 @@ class LSTMClassifier(nn.Module):
         )
     def forward(self, x):
         # x: (batch, seq_len, input_dim)
-        x = self.bn(x)
+        x = self.dropout(x)
+        x = self.ln(x)
         _, (h_n, _) = self.lstm(x)  # h_n: (num_layers, batch, hidden_dim)
         hidden_out = torch.cat((h_n[-2], h_n[-1]), dim=1)
         return self.fc(hidden_out)
 
 input_dim = X_train.shape[2]
 num_classes = len(np.unique(y))
-hidden_dim = 128
+hidden_dim = 256
 num_layers = 2
 model = LSTMClassifier(input_dim, hidden_dim, num_layers, num_classes)
 print(f"Model initialized with input_dim={input_dim}, hidden_dim={hidden_dim}, num_layers={num_layers}, num_classes={num_classes}")
@@ -163,7 +165,7 @@ device = get_device()
 print(f"Using device: {device}")
 os.makedirs("outputs", exist_ok=True)
 model = model.to(device)
-optimizer = optim.Adam(model.parameters(), lr=0.00008, weight_decay=1e-3)
+optimizer = optim.Adam(model.parameters(), lr=0.0003, weight_decay=6e-4)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3)
 counts = [684, 2879, 1363]  # Class counts
 class_weights = 1. / torch.tensor(counts, dtype=torch.float)
@@ -174,7 +176,7 @@ print("Training setup complete.")
 
 # ========== Training Loop ==========
 print("\n========== Starting Training Loop ==========")
-num_epochs = 30
+num_epochs = 40
 best_val_f1 = 0.0
 train_loss_history = []
 val_loss_history = []
