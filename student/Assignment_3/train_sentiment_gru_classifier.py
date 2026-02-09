@@ -102,9 +102,10 @@ print("\n========== Defining GRU Model ==========")
 class GRUClassifier(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_layers, num_classes, dropout=0.5):
         super().__init__()
-        self.gru = nn.GRU(input_dim, hidden_dim, num_layers=num_layers, batch_first=True, dropout=dropout)
+        self.gru = nn.GRU(input_dim, hidden_dim, num_layers=num_layers,
+                          batch_first=True, dropout=dropout, bidirectional=True)
         self.fc = nn.Sequential(
-            nn.Linear(hidden_dim, 64),
+            nn.Linear(hidden_dim * 2, 64),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(64, num_classes)
@@ -112,8 +113,8 @@ class GRUClassifier(nn.Module):
     def forward(self, x):
         # x: (batch, seq_len, input_dim)
         _, h_n = self.gru(x)  # h_n: (num_layers, batch, hidden_dim)
-        out = h_n[-1]  # (batch, hidden_dim)
-        return self.fc(out)
+        hidden_out = torch.cat((h_n[-2], h_n[-1]), dim=1)   # bidirectional, (batch, hidden * 2)
+        return self.fc(hidden_out)
 
 input_dim = X_train.shape[2]
 num_classes = len(np.unique(y))
@@ -128,7 +129,7 @@ device = get_device()
 print(f"Using device: {device}")
 os.makedirs("outputs", exist_ok=True)
 model = model.to(device)
-optimizer = optim.AdamW(model.parameters(), lr=0.0001, weight_decay=5e-4)
+optimizer = optim.AdamW(model.parameters(), lr=0.0001, weight_decay=6e-4)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3)
 counts = [684, 2879, 1363]  # Class counts
 class_weights = 1. / torch.tensor(counts, dtype=torch.float)
