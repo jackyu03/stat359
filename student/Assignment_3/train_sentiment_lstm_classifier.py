@@ -46,7 +46,7 @@ plt.grid(True)
 # plt.show()
 
 # ========== Tokenization and Embedding ==========
-print("\n========== Loading SentenceTransformer Model ==========")
+print("\n========== Loading embedding Model ==========")
 
 path = "./student/Assignment_3/pretrained_models/fasttext-wiki-news-subwords-300.model" 
 
