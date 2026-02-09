@@ -119,14 +119,14 @@ class MLPSentiment(nn.Module):
 
         return out
     
-model = MLPSentiment(300, 100, 3)
+model = MLPSentiment(300, 128, 3)
 
 device = torch.device("mps")
 model.to(device)
 criterion = nn.CrossEntropyLoss(weight=class_weights_tensor).to(device)
 optimizer = optim.Adam(model.parameters(), lr=0.003)
 
-num_epochs = 20
+num_epochs = 30
 best_val_f1 = 0.0
 
 # history tracking
