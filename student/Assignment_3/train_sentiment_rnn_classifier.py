@@ -140,7 +140,7 @@ device = get_device()
 print(f"Using device: {device}")
 os.makedirs("outputs", exist_ok=True)
 model = model.to(device)
-optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
+optimizer = optim.Adam(model.parameters(), lr=0.0003, weight_decay=5e-4)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3)
 counts = [684, 2879, 1363]  # Class counts
 class_weights = 1. / torch.tensor(counts, dtype=torch.float)

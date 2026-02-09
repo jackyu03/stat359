@@ -24,7 +24,7 @@ from gensim.models import KeyedVectors
 from gensim.utils import simple_preprocess
 from sklearn.utils.class_weight import compute_class_weight
 
-random_state = 67
+random_state = 42
 torch.manual_seed(random_state)
 
 print("\n========== Loading Dataset ==========")
@@ -78,7 +78,7 @@ X_temp, X_test, y_temp, y_test = train_test_split(
     X_numpy, y_numpy, test_size=0.15, stratify=y_numpy, random_state=random_state
 )
 X_train, X_val, y_train, y_val = train_test_split(
-    X_temp, y_temp, test_size=0.176, stratify=y_temp, random_state=random_state
+    X_temp, y_temp, test_size=0.15, stratify=y_temp, random_state=random_state
 )
 
 class_weights_array = compute_class_weight(
