@@ -105,7 +105,7 @@ print("Training setup complete.")
 
 # ========== Training Loop ==========
 print("\n========== Starting Training Loop ==========")
-num_epochs = 10
+num_epochs = 7
 best_val_f1 = 0.0
 train_loss_history = []
 val_loss_history = []
