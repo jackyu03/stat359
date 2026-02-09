@@ -73,7 +73,7 @@ print("\n========== Preparing to Train ==========")
 X_numpy = np.vstack(data['embedding'].values)
 y_numpy = data['label'].to_numpy()
 
-# 15% for test, 15% for validation, 70% for train
+# 15% for test, 13% for validation, 72% for train
 X_temp, X_test, y_temp, y_test = train_test_split(
     X_numpy, y_numpy, test_size=0.15, stratify=y_numpy, random_state=random_state
 )
