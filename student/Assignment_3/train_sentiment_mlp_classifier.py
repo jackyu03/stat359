@@ -250,6 +250,15 @@ with torch.no_grad():
 class_names = ['Negative (0)', 'Neutral (1)', 'Positive (2)']
 print(classification_report(all_labels, all_preds, target_names=class_names, digits=4))
 
+# Confusion Matrix
+cm = confusion_matrix(all_labels, all_preds)
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+plt.title('Confusion Matrix')
+plt.savefig('outputs/mlp_confusion_matrix.png')
+# plt.show()
+print("Confusion matrix saved as 'outputs/mlp_confusion_matrix.png'.")
+
 # ========== Update Shared Metrics CSV ==========
 print("\n========== Updating Shared Metrics CSV ==========")
 metrics_path = 'outputs/shared_metrics.csv'
