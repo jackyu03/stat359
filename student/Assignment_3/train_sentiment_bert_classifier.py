@@ -15,6 +15,8 @@ import os
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, classification_report, confusion_matrix
+import matplotlib
+matplotlib.use('Agg') # disable plotting
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
@@ -210,7 +212,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig('outputs/bert_f1_learning_curves.png')
-plt.show()
+# plt.show()
 print("Learning curves saved as 'outputs/bert_f1_learning_curves.png'.")
 
 # Save accuracy plot separately
@@ -224,7 +226,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig('outputs/bert_accuracy_learning_curve.png')
-plt.show()
+# plt.show()
 print("Accuracy curve saved as 'outputs/bert_accuracy_learning_curve.png'.")
 
 # ========== Test Evaluation ==========
@@ -260,7 +262,7 @@ plt.ylabel('True Label')
 plt.xlabel('Predicted Label')
 plt.title('Confusion Matrix')
 plt.savefig('outputs/bert_confusion_matrix.png')
-plt.show()
+# plt.show()
 print("Confusion matrix saved as 'outputs/bert_confusion_matrix.png'.")
 # ========== Update Shared Metrics CSV ==========
 print("\n========== Updating Shared Metrics CSV ==========")

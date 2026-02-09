@@ -16,6 +16,8 @@ import os
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, classification_report, confusion_matrix
+import matplotlib
+matplotlib.use('Agg') # disable plotting
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
@@ -40,7 +42,7 @@ plt.title('Distribution of Sentence Lengths')
 plt.xlabel('Sentence Length (words)')
 plt.ylabel('Frequency')
 plt.grid(True)
-plt.show()
+# plt.show()
 
 # ========== Tokenization and Embedding ==========
 print("\n========== Loading SentenceTransformer Model ==========")
@@ -240,7 +242,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig('outputs/rnn_f1_learning_curves.png')
-plt.show()
+# plt.show()
 print("Learning curves saved as 'outputs/rnn_f1_learning_curves.png'.")
 
 # Save accuracy plot separately
@@ -254,7 +256,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig('outputs/rnn_accuracy_learning_curve.png')
-plt.show()
+# plt.show()
 print("Accuracy curve saved as 'outputs/rnn_accuracy_learning_curve.png'.")
 
 # ========== Test Evaluation ==========
@@ -288,7 +290,7 @@ plt.ylabel('True Label')
 plt.xlabel('Predicted Label')
 plt.title('Confusion Matrix')
 plt.savefig('outputs/rnn_confusion_matrix.png')
-plt.show()
+# plt.show()
 print("Confusion matrix saved as 'outputs/rnn_confusion_matrix.png'.")
 # ========== Update Shared Metrics CSV ==========
 print("\n========== Updating Shared Metrics CSV ==========")
