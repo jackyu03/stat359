@@ -264,6 +264,11 @@ print("\n========== Updating Shared Metrics CSV ==========")
 metrics_path = 'outputs/shared_metrics.csv'
 model_name = 'MLP'
 
+# Calculate overall metrics
+test_acc = (np.array(all_preds) == np.array(all_labels)).mean()
+test_f1_macro = f1_score(all_labels, all_preds, average='macro')
+test_f1_weighted = f1_score(all_labels, all_preds, average='weighted')
+
 # Calculate per-class metrics
 f1_negative = f1_score(all_labels, all_preds, labels=[0], average='macro')
 f1_neutral = f1_score(all_labels, all_preds, labels=[1], average='macro')
