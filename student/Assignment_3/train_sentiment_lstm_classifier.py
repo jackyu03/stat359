@@ -8,7 +8,8 @@ Script for training an LSTM-based sentiment classifier on the financial_phraseba
 import numpy as np
 import pandas as pd
 import datasets
-from sentence_transformers import SentenceTransformer
+from gensim.models import KeyedVectors
+from gensim.utils import simple_preprocess
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -16,6 +17,8 @@ import os
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, classification_report, confusion_matrix
+import matplotlib
+matplotlib.use('Agg') # disable plotting
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
@@ -40,41 +43,60 @@ plt.title('Distribution of Sentence Lengths')
 plt.xlabel('Sentence Length (words)')
 plt.ylabel('Frequency')
 plt.grid(True)
-plt.show()
+# plt.show()
 
 # ========== Tokenization and Embedding ==========
 print("\n========== Loading SentenceTransformer Model ==========")
-embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+path = "./student/Assignment_3/pretrained_models/fasttext-wiki-news-subwords-300.model" 
+
+try:
+    fasttext_model = KeyedVectors.load(path)
+    print('FastText KeyedVectors loaded successfully!')
+except Exception as e:
+    print(f'Failed to load model due to {e}!')
+    exit()
+
 print("Model loaded.")
+
+def get_sequence_embedding(sentence, model, max_len=32, embedding_dim=300):
+    tokens = simple_preprocess(sentence)
+    
+    # truncation to 32
+    if len(tokens) > max_len:
+        tokens = tokens[:max_len]
+
+    sequence_vectors = []
+    for token in tokens:
+        if token in model:
+            sequence_vectors.append(model[token])
+        else: # OOV
+            sequence_vectors.append(np.zeros(embedding_dim))
+            
+    if len(sequence_vectors) > 0:
+        sequence_vectors = np.stack(sequence_vectors)
+    else:
+        sequence_vectors = np.zeros((0, embedding_dim))
+        
+    # padding
+    current_len = sequence_vectors.shape[0]
+    if current_len < max_len:
+        padding_needed = max_len - current_len
+        padding = np.zeros((padding_needed, embedding_dim))
+        # concat padding
+        sequence_vectors = np.vstack([sequence_vectors, padding]) if current_len > 0 else padding
+        
+    return sequence_vectors.astype(np.float32)
+
+print("\n========== Encoding Sentences as Sequences ==========")
+sequences = [get_sequence_embedding(s, fasttext_model) for s in tqdm(data['sentence'], desc="Vectorizing")]
+X_seq = np.stack(sequences) # N, max_len=32, 300
+y = data['label'].values
+
+print(f"X_seq shape: {X_seq.shape}") 
 
 def get_device():
     return "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
-
-def tokenize_and_pad(sentences, model, max_len=32):
-    device = get_device()
-    model = model.to(device)
-    emb_dim = model.get_sentence_embedding_dimension()
-    embeddings = []
-    for sent in tqdm(sentences, desc="Tokenizing & encoding"):
-        tokens = model.tokenizer(sent, truncation=True, padding='max_length', max_length=max_len, return_tensors='pt')
-        input_ids = tokens['input_ids'].to(device)
-        attention_mask = tokens['attention_mask'].to(device)
-        with torch.no_grad():
-            output = model._first_module().auto_model(input_ids=input_ids, attention_mask=attention_mask)
-            emb = output.last_hidden_state.squeeze(0)
-            if emb.shape[0] < max_len:
-                pad = torch.zeros(max_len - emb.shape[0], emb_dim, device=device)
-                emb = torch.cat([emb, pad], dim=0)
-            elif emb.shape[0] > max_len:
-                emb = emb[:max_len, :]
-            embeddings.append(emb.cpu().numpy())
-    return np.stack(embeddings)
-
-print("\n========== Encoding Sentences as Sequences ==========")
-max_seq_len = 32
-X_seq = tokenize_and_pad(data['sentence'], embedding_model, max_len=max_seq_len)
-y = data['label'].values
-print(f"X_seq shape: {X_seq.shape}, y shape: {y.shape}")
 
 # ========== Train/Test Split ==========
 print("\n========== Splitting Data ==========")
@@ -113,7 +135,7 @@ class LSTMClassifier(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_layers, num_classes, dropout=0.5):
         super().__init__()
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=num_layers,
-                            batch_first=True, nonlinearity='tanh', dropout=dropout)
+                            batch_first=True, dropout=dropout)
         self.fc = nn.Sequential(
             nn.Linear(hidden_dim, 64),
             nn.ReLU(),
@@ -241,7 +263,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig('outputs/lstm_f1_learning_curves.png')
-plt.show()
+# plt.show()
 print("Learning curves saved as 'outputs/lstm_f1_learning_curves.png'.")
 
 # Save accuracy plot separately
@@ -255,7 +277,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig('outputs/lstm_accuracy_learning_curve.png')
-plt.show()
+# plt.show()
 print("Accuracy curve saved as 'outputs/lstm_accuracy_learning_curve.png'.")
 
 # ========== Test Evaluation ==========
@@ -289,7 +311,7 @@ plt.ylabel('True Label')
 plt.xlabel('Predicted Label')
 plt.title('Confusion Matrix')
 plt.savefig('outputs/lstm_confusion_matrix.png')
-plt.show()
+# plt.show()
 print("Confusion matrix saved as 'outputs/lstm_confusion_matrix.png'.")
 print("\nPer-class F1 Scores:")
 for i, name in enumerate(class_names):
