@@ -15,6 +15,8 @@ import os
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, classification_report, confusion_matrix
+import matplotlib
+matplotlib.use('Agg') # disable plotting
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
@@ -217,11 +219,22 @@ plt.plot(val_acc_history, label='Val Accuracy')
 plt.title('Accuracy Curve')
 plt.legend(); plt.grid(True)
 plt.tight_layout()
-plt.savefig('outputs/mlp_learning_curves.png')
-plt.show()
+plt.savefig('outputs/mlp_f1_learning_curves.png')
+# plt.show()
 
-# ========== Final Test Evaluation ==========
-print("\n========== Evaluating on Test Set ==========")
+# Save accuracy plot separately
+plt.figure(figsize=(8, 6))
+plt.plot(train_acc_history, label='Train Accuracy')
+plt.plot(val_acc_history, label='Val Accuracy')
+plt.title('Accuracy Curve')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig('outputs/mlp_accuracy_learning_curve.png')
+# # plt.show()
+
 model.load_state_dict(torch.load('outputs/best_mlp_model.pth'))
 model.eval()
 all_preds, all_labels = [], []
@@ -243,4 +256,4 @@ plt.figure(figsize=(8, 6))
 sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
 plt.title('Confusion Matrix')
 plt.savefig('outputs/mlp_confusion_matrix.png')
-plt.show()
+# plt.show()
